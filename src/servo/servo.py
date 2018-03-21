@@ -1,6 +1,5 @@
 #!/usr/bin/python3
-
-from PWM import PWM
+from .PWM import PWM
 import time
 
 PULSE_MIN = 150  # Min pulse length out of 4096
@@ -20,7 +19,7 @@ class Servo():
         self.init = True
 
     def move_to_angle(self, radian):
-        pulse = 130.57*radian + 109.36
+        pulse = 130.57*radian + 150.0
         if pulse < PULSE_MIN:
             pulse = PULSE_MIN
         elif pulse > PULSE_MAX:
@@ -30,10 +29,10 @@ class Servo():
 
 if __name__ == '__main__':
     s0 = Servo(0)
-    s1 = Servo(1)
-    wt = 0.13
+    s1 = Servo(2)
+    wt = 0.20
     while(True):
         s0.move_to_angle(0)
         time.sleep(wt)
-        s0.move_to_angle(1)
+        s0.move_to_angle(2)
         time.sleep(wt)

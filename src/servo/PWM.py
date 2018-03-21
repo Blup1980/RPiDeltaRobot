@@ -1,8 +1,8 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 import time
 import math
-from Adafruit_I2C import Adafruit_I2C
+from .Adafruit_I2C import Adafruit_I2C
 
 # ============================================================================
 # Adafruit PCA9685 16-Channel PWM Servo Driver
