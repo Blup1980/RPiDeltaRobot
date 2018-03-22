@@ -48,7 +48,7 @@ class DeltaMechanics:
             self.valid = True
 
     def _solve_ipk(self, e, f, g):
-        delta = e**2 + f**2 -g**2
+        delta = e**2 + f**2 - g**2
         if delta >= 0:
             pos_sol_t = (-f + np.sqrt(delta)) / (g-e)
             neg_sol_t = (-f - np.sqrt(delta)) / (g-e)
