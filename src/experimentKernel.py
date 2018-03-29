@@ -26,15 +26,22 @@ s2.move_to_angle(-startPos + zero_offset)
 time.sleep(1)
 
 pos = [ 0, 0, 0]
-while True:
-    for r in radius:
-        for i in range(0, len(w)):
-            pos[0] = r * np.sin(w[i])
-            pos[1] = r * np.cos(w[i])
-            pos[2] = -0.04
-            meca.update_from_new_tip_pos(pos)
-            #print(meca.theta)
-            s0.move_to_angle(-meca.theta[0]+zero_offset)
-            s1.move_to_angle(-meca.theta[1]+zero_offset)
-            s2.move_to_angle(-meca.theta[2]+zero_offset)
-            #time.sleep(0.01)
+try:
+    while True:
+        for r in radius:
+            for i in range(0, len(w)):
+                pos[0] = r * np.sin(w[i])
+                pos[1] = r * np.cos(w[i])
+                pos[2] = -0.04
+                meca.update_from_new_tip_pos(pos)
+                #print(meca.theta)
+                s0.move_to_angle(-meca.theta[0]+zero_offset)
+                s1.move_to_angle(-meca.theta[1]+zero_offset)
+                s2.move_to_angle(-meca.theta[2]+zero_offset)
+                #time.sleep(0.01)
+except KeyboardInterrupt:
+    s0.close()
+    s1.close()
+    s2.close()
+    print("Graceful stop after keyboard interrupt")
+

@@ -1,5 +1,4 @@
 #!/usr/bin/python3
-from .PWM import PWM
 import time
 import os.path
 
@@ -19,24 +18,8 @@ class Servo:
     def move_to_angle(self, radian):
         raise NotImplementedError
 
-
-class ServoPython(Servo):
-    pwm = PWM(0x40)
-    init = False
-    PULSE_MIN = 150
-    PULSE_MAX = 500
-
-    def init_controller(self):
-        self.pwm.set_pwm_freq(60)
-        self.init = True
-
-    def move_to_angle(self, radian):
-        pulse = 130.57*radian + 150.0
-        if pulse < self.PULSE_MIN:
-            pulse = self.PULSE_MIN
-        elif pulse > self.PULSE_MAX:
-            pulse = self.PULSE_MAX
-        self.pwm.set_pwm(self.channel, 0, int(pulse))
+    def close(self):
+        raise NotImplementedError
 
 
 class ServoKernel(Servo):
@@ -47,6 +30,7 @@ class ServoKernel(Servo):
     PULSE_MIN = 600000.0
     PULSE_MAX = 2500000.0
     duty_cycle_path = ''
+    enable_path = ''
 
     def init_controller(self):
         export_path = "{:s}/export".format(self.servoClassPath)
@@ -62,20 +46,31 @@ class ServoKernel(Servo):
                 exit(0)
 
         period_path = "{:s}/period".format(pwm_path)
-        self.duty_cycle_path = "{:s}/duty_cycle".format(pwm_path)
         with open(period_path, 'w') as fh:
             fh.writelines("{:d}".format(int(self.period_ns)))
+        self.enable_path = "{:s}/enable".format(pwm_path)
+        with open(self.enable_path, 'w') as fh:
+            fh.writelines("{:s}".format('1'))
+        
+        self.duty_cycle_path = "{:s}/duty_cycle".format(pwm_path)
+        self.init = True
 
     def move_to_angle(self, radian):
+        if not self.init:
+            exit(0)
         duty_cycle = self.model_slope*radian + self.model_intercept
         if duty_cycle < self.PULSE_MIN:
             duty_cycle = self.PULSE_MIN
         elif duty_cycle > self.PULSE_MAX:
             duty_cycle = self.PULSE_MAX
         with open(self.duty_cycle_path, 'w') as fh:
-            #print(duty_cycle)
             fh.writelines("{:d}".format(int(duty_cycle)))
 
+    def close(self):
+        if self.init:
+            with open(self.enable_path, 'w') as fh:
+                fh.writelines("{:s}".format('0'))
+        
 
 if __name__ == '__main__':
     s0 = ServoKernel(0)
