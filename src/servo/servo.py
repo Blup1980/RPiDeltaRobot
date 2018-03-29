@@ -41,10 +41,10 @@ class ServoPython(Servo):
 class ServoKernel(Servo):
     period_ns = 20000000
     servoClassPath = '/sys/class/pwm/pwmchip0'
-    model_slope = 100
-    model_intercept = 200
-    PULSE_MIN = 800000
-    PULSE_MAX = 1500000
+    model_slope = 9268.3
+    model_intercept = 1550000 
+    PULSE_MIN = 600000
+    PULSE_MAX = 2500000
     duty_cycle_path = ''
 
     def init_controller(self):
