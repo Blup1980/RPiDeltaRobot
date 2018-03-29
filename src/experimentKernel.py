@@ -5,9 +5,9 @@ import time
 import math
 from servo import servo
 
-s0 = servo.ServoPython(0)
-s1 = servo.ServoPython(1)
-s2 = servo.ServoPython(2)
+s0 = servo.ServoKernel(0)
+s1 = servo.ServoKernel(1)
+s2 = servo.ServoKernel(2)
 
 w = np.arange(0, 2.0 * math.pi, 2.0 * math.pi / 200)
 
