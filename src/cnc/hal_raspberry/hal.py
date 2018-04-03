@@ -35,40 +35,6 @@ def fan_control(on_off):
         pass
 
 
-def extruder_heater_control(percent):
-    """ Extruder heater control.
-    :param percent: heater power in percent 0..100. 0 turns heater off.
-    """
-    if percent > 0:
-        pass
-    else:
-        pass
-
-
-def bed_heater_control(percent):
-    """ Hot bed heater control.
-    :param percent: heater power in percent 0..100. 0 turns heater off.
-    """
-    if percent > 0:
-        pass
-    else:
-        pass
-
-
-def get_extruder_temperature():
-    """ Measure extruder temperature.
-    :return: temperature in Celsius.
-    """
-    return 0
-
-
-def get_bed_temperature():
-    """ Measure bed temperature.
-    :return: temperature in Celsius.
-    """
-    return 0
-
-
 def disable_steppers():
     """ Disable all steppers until any movement occurs.
     """

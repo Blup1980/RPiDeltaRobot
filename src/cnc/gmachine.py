@@ -90,53 +90,6 @@ class GMachine(object):
         if pa >= 0 and pb < 0:
             return 4
 
-    def __adjust_circle(self, da, db, ra, rb, direction, pa, pb, ma, mb):
-        r = math.sqrt(ra * ra + rb * rb)
-        if r == 0:
-            raise GMachineException("circle radius is zero")
-        sq = self.__quarter(-ra, -rb)
-        if da == 0 and db == 0:  # full circle
-            ea = da
-            eb = db
-            eq = 5  # mark as non-existing to check all
-        else:
-            if da - ra == 0:
-                ea = 0
-            else:
-                b = (db - rb) / (da - ra)
-                ea = math.copysign(math.sqrt(r * r / (1.0 + abs(b))), da - ra)
-            eb = math.copysign(math.sqrt(r * r - ea * ea), db - rb)
-            eq = self.__quarter(ea, eb)
-            ea += ra
-            eb += rb
-        # iterate coordinates quarters and check if we fit table
-        q = sq
-        pq = q
-        for _ in range(0, 4):
-            if direction == CW:
-                q -= 1
-            else:
-                q += 1
-            if q <= 0:
-                q = 4
-            elif q >= 5:
-                q = 1
-            if q == eq:
-                break
-            is_raise = False
-            if (pq == 1 and q == 4) or (pq == 4 and q == 1):
-                is_raise = (pa + ra + r > ma)
-            elif (pq == 1 and q == 2) or (pq == 2 and q == 1):
-                is_raise = (pb + rb + r > mb)
-            elif (pq == 2 and q == 3) or (pq == 3 and q == 2):
-                is_raise = (pa + ra - r < 0)
-            elif (pq == 3 and q == 4) or (pq == 4 and q == 3):
-                is_raise = (pb + rb - r < 0)
-            if is_raise:
-                raise GMachineException("out of effective area")
-            pq = q
-        return ea, eb
-
     def safe_zero(self, x=True, y=True, z=True):
         """ Move head to zero position safely.
         :param x: boolean, move X axis to zero

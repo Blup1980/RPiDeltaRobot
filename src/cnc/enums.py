@@ -30,6 +30,7 @@ class Plane(Enum):
     """
     pass
 
+
 PLANE_XY = Plane("XY")
 PLANE_ZX = Plane("ZX")
 PLANE_YZ = Plane("YZ")
@@ -40,6 +41,7 @@ class RotationDirection(Enum):
     """
     pass
 
+
 CW = RotationDirection("CW")
 CCW = RotationDirection("CCW")
 
@@ -48,6 +50,7 @@ class Heaters(Enum):
     """ Enum for selecting heater.
     """
     pass
+
 
 HEATER_EXTRUDER = Heaters("extruder")
 HEATER_BED = Heaters("bed")

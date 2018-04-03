@@ -32,36 +32,6 @@ def fan_control(on_off):
         logging.info("Fan is off")
 
 
-# noinspection PyUnusedLocal
-def extruder_heater_control(percent):
-    """ Extruder heater control.
-    :param percent: heater power in percent 0..100. 0 turns heater off.
-    """
-    pass
-
-
-# noinspection PyUnusedLocal
-def bed_heater_control(percent):
-    """ Hot bed heater control.
-    :param percent: heater power in percent 0..100. 0 turns heater off.
-    """
-    pass
-
-
-def get_extruder_temperature():
-    """ Measure extruder temperature.
-    :return: temperature in Celsius.
-    """
-    return EXTRUDER_MAX_TEMPERATURE * 0.999
-
-
-def get_bed_temperature():
-    """ Measure bed temperature.
-    :return: temperature in Celsius.
-    """
-    return BED_MAX_TEMPERATURE * 0.999
-
-
 def disable_steppers():
     """ Disable all steppers until any movement occurs.
     """

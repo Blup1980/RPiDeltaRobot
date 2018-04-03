@@ -111,14 +111,6 @@ if 'spindle_control' not in locals():
     raise NotImplementedError("hal.spindle_control() not implemented")
 if 'fan_control' not in locals():
     raise NotImplementedError("hal.fan_control() not implemented")
-if 'extruder_heater_control' not in locals():
-    raise NotImplementedError("hal.extruder_heater_control() not implemented")
-if 'bed_heater_control' not in locals():
-    raise NotImplementedError("hal.bed_heater_control() not implemented")
-if 'get_extruder_temperature' not in locals():
-    raise NotImplementedError("hal.get_extruder_temperature() not implemented")
-if 'get_bed_temperature' not in locals():
-    raise NotImplementedError("hal.get_bed_temperature() not implemented")
 if 'disable_steppers' not in locals():
     raise NotImplementedError("hal.disable_steppers() not implemented")
 if 'calibrate' not in locals():

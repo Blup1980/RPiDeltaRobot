@@ -1,5 +1,6 @@
 # -----------------------------------------------------------------------------
 # Hardware config.
+REAL_TIME_DT = 1.0/25.0
 
 # Maximum velocity for each axis in millimeter per minute.
 MAX_VELOCITY_MM_PER_MIN_X = 24000
