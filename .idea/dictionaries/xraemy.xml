@@ -9,6 +9,7 @@
       <w>outdrv</w>
       <w>prescale</w>
       <w>proc</w>
+      <w>pwmchip</w>
       <w>subadr</w>
       <w>swrst</w>
     </words>
