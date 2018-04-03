@@ -12,13 +12,13 @@ s1 = servo.ServoKernel(1)
 s2 = servo.ServoKernel(2)
 
 w = np.arange(0, 2.0 * math.pi, 2.0 * math.pi / 300)
-radius = np.linspace(0.001,0.02,20) 
+radius = np.linspace(0.001, 0.02, 20)
 
-meca = DeltaMechanics( L = 0.02, l=0.04, wb=0.02, up=0.00922)
+meca = DeltaMechanics(L=0.02, l=0.04, wb=0.02, up=0.00922)
 
 zero_offset = -0.16
 
-startPos=90 * math.pi / 180;
+startPos=90 * math.pi / 180
 
 s0.move_to_angle(-startPos + zero_offset)
 s1.move_to_angle(-startPos + zero_offset)
@@ -44,4 +44,3 @@ except KeyboardInterrupt:
     s1.close()
     s2.close()
     print("Graceful stop after keyboard interrupt")
-

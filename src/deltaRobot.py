@@ -17,9 +17,14 @@ class DeltaMechanics:
         self.c = self.up/2.0 - self.wb/2.0
 
         self.theta = np.array([0.0, 0.0, 0.0])
-        self.valid = True
+        self.tip_pos = np.array([0.0, 0.0, 0.0])
+        self.theta_prime = np.array([0.0, 0.0, 0.0])
+        self.valid = False
 
     def update_from_new_tip_pos(self, tip_pos):
+        if not tip_pos.shape == (3,):
+            raise ValueError('the position of the tip should by a 3x1 vector')
+        self.tip_pos = tip_pos
         x = tip_pos[0]
         y = tip_pos[1]
         z = tip_pos[2]
@@ -58,6 +63,37 @@ class DeltaMechanics:
             return self._best_angle(pos_sol, neg_sol)
         else:
             return np.nan
+
+    def update_motor_speed_from_tip_speed(self, tip_speed):
+        if not self.valid:
+            return
+        if not tip_speed.shape == (3, 1):
+            raise ValueError('the speed of the tip should by a 3x1 vector')
+        x = self.tip_pos[0]
+        y = self.tip_pos[1]
+        z = self.tip_pos[2]
+
+        ma = np.matrix([[x,
+                         y + self.a + self.L * np.cos(self.theta[0]),
+                         z + self.L * np.sin(self.theta[0])],
+                        [2*(x+self.b)-np.sqrt(3)*self.L*np.cos(self.theta[1]),
+                         2*(y+self.c)-self.L*np.cos(self.theta[1]),
+                         2*(z+self.L*np.sin(self.theta[1]))],
+                        [2*(x-self.b)+np.sqrt(3)*self.L*np.cos(self.theta[2]),
+                         2*(y+self.c)-self.L*np.cos(self.theta[2]),
+                         2*(z+self.L*np.sin(self.theta[2]))]])
+
+        inv_mb = np.matrix([[1.0/(self.L*((y+self.a)*np.sin(self.theta[0])-z*np.cos(self.theta[0]))),
+                             0,
+                             0],
+                            [0,
+                             -1.0/(self.L*((np.sqrt(3)*(x+self.b)+y+self.c)*np.sin(self.theta[1])+2.0*z*np.cos(self.theta[1]))),
+                             0],
+                            [0,
+                             0,
+                             1.0/(self.L*((np.sqrt(3)*(x-self.b)-y-self.c)*np.sin(self.theta[2])-2.0*z*np.cos(self.theta[2])))]])
+
+        self.theta_prime = inv_mb * ma * tip_speed
 
     def _best_angle(self, angle1, angle2):
         r1 = -self.wb - self.L*math.cos(angle1)
