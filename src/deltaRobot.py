@@ -6,6 +6,26 @@ import math
 
 class DeltaMechanics:
     def __init__(self, L, l, wb, up):
+        """
+            class constructor.
+
+            create a Delta robot model using the provided dimensions.
+
+            Parameters
+            ----------
+            L : float
+                Length of the shoulder
+            l : float
+                Length of the arm
+            wb : float
+                Distance from the center of the base to its shoulder join
+            up : float
+                Distance from the center of the tip to its arm join
+
+            Returns
+            -------
+            None
+        """
         self.L = L
         self.l = l
         self.wb = wb
@@ -22,6 +42,20 @@ class DeltaMechanics:
         self.valid = False
 
     def update_from_new_tip_pos(self, tip_pos):
+        """
+            Set the new position of the tip.
+
+            Updates the internal variables such as motor angular positions.
+
+            Parameters
+            ----------
+            tip_pos : np.array(3,)
+                Position of the tip [x,y,z]
+
+            Returns
+            -------
+            None
+        """
         if not tip_pos.shape == (3,):
             raise ValueError('the position of the tip should by a 3x1 vector')
         self.tip_pos = tip_pos
@@ -65,6 +99,22 @@ class DeltaMechanics:
             return np.nan
 
     def update_motor_speed_from_tip_speed(self, tip_speed):
+        """
+            Set the speed of the tip.
+
+            Updates the speed internal variable : theta_prime.
+
+            Parameters
+            ----------
+            tip_speed : np.array(3,1)
+                speed of the tip [[v_x,
+                                   v_y,
+                                   v_z]]
+
+            Returns
+            -------
+            None
+        """
         if not self.valid:
             return
         if not tip_speed.shape == (3, 1):
