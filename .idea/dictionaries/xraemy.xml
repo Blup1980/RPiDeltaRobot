@@ -5,6 +5,7 @@
       <w>allcall</w>
       <w>busnum</w>
       <w>cpuinfo</w>
+      <w>extruder</w>
       <w>invrt</w>
       <w>outdrv</w>
       <w>prescale</w>
