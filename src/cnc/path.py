@@ -3,12 +3,12 @@ import logging
 
 from cnc.config import *
 from cnc.coordinates import *
-from cnc.enums import *
+from math import floor
 
 SECONDS_IN_MINUTE = 60.0
 
 
-class PathGenerator():
+class PathGenerator:
     """ Stepper motors pulses generator.
         It generates time for each pulses for specified path as accelerated
         movement for specified velocity, then moves linearly and then braking
@@ -44,12 +44,12 @@ class PathGenerator():
         self._iteration_y = 0
         self._iteration_z = 0
         self._iteration_e = 0
-        self._iteration_direction = None
         self._acceleration_time_s = 0.0
         self._linear_time_s = 0.0
         self._2Vmax_per_a = 0.0
         self._delta = delta_mm
-        self._new_pos = new_pos
+        self._start_pos = new_pos - delta_mm
+        self._end_pos = new_pos
 
         distance_mm = abs(delta_mm)  # type: Coordinates
         # velocity of each axis
@@ -58,33 +58,23 @@ class PathGenerator():
             velocity_mm_per_min / SECONDS_IN_MINUTE / distance_total_mm))
         # acceleration time
         self.acceleration_time_s = (self.max_velocity_mm_per_sec.find_max() / TIP_MAX_ACCELERATION_MM_PER_S2)
+        self.acceleration_time_s = floor(self.acceleration_time_s / REAL_TIME_DT) * REAL_TIME_DT
+
         # check if there is enough space to accelerate and brake, adjust time
         # S = a * t^2 / 2
-        if TIP_MAX_ACCELERATION_MM_PER_S2 * self.acceleration_time_s ** 2 \
-                > distance_total_mm:
-            self.acceleration_time_s = \
-                math.sqrt(distance_total_mm
-                          / TIP_MAX_ACCELERATION_MM_PER_S2)
+        if TIP_MAX_ACCELERATION_MM_PER_S2 * self.acceleration_time_s ** 2 > distance_total_mm:
+            self.acceleration_time_s = math.sqrt(distance_total_mm / TIP_MAX_ACCELERATION_MM_PER_S2)
             self.linear_time_s = 0.0
             # V = a * t -> V = 2 * S / t, take half of total distance for
             # acceleration and braking
-            self.max_velocity_mm_per_sec = (distance_mm
-                                            / self.acceleration_time_s)
+            self.max_velocity_mm_per_sec = (distance_mm / self.acceleration_time_s)
         else:
             # calculate linear time
-            linear_distance_mm = distance_total_mm \
-                                 - self.acceleration_time_s ** 2 \
-                                 * TIP_MAX_ACCELERATION_MM_PER_S2
-            self.linear_time_s = (linear_distance_mm
-                                  / self.max_velocity_mm_per_sec.length())
-        self._total_pulses_x = round(distance_mm.x * STEPPER_PULSES_PER_MM_X)
-        self._total_pulses_y = round(distance_mm.y * STEPPER_PULSES_PER_MM_Y)
-        self._total_pulses_z = round(distance_mm.z * STEPPER_PULSES_PER_MM_Z)
-        self._total_pulses_e = round(distance_mm.e * STEPPER_PULSES_PER_MM_E)
-        self._direction = (math.copysign(1, delta_mm.x),
-                           math.copysign(1, delta_mm.y),
-                           math.copysign(1, delta_mm.z),
-                           math.copysign(1, delta_mm.e))
+            acceleration_distance_mm = 1/2 * self.acceleration_time_s ** 2 * TIP_MAX_ACCELERATION_MM_PER_S2
+            linear_distance_mm = distance_total_mm - 2*acceleration_distance_mm
+            self.linear_time_s = (linear_distance_mm / self.max_velocity_mm_per_sec.length())
+
+        self._total_time_steps = round(self.total_time_s() * REAL_TIME_DT)
 
     def _adjust_velocity(self, velocity_mm_sec):
         """ Automatically decrease velocity to all axises proportionally if
@@ -129,15 +119,37 @@ class PathGenerator():
                 self.linear_time_s,
                 self.max_velocity_mm_per_sec)
 
-    @staticmethod
-    def __linear(i, pulses_per_mm, total_pulses, velocity_mm_per_sec):
+    def __linear(self, i, velocity_mm_per_sec, end_position):
         """ Helper function for linear movement.
         """
-        # check if need to calculate for this axis
-        if total_pulses == 0.0 or i >= total_pulses:
-            return None
-        # Linear movement, S = V * t -> t = S / V
-        return i / pulses_per_mm / velocity_mm_per_sec
+        t = i * REAL_TIME_DT
+        acceleration_steps = floor(self._acceleration_time_s / REAL_TIME_DT)
+        linear_steps = self.linear_time_s / REAL_TIME_DT
+
+        if acceleration_steps == 0:
+            speed_increment = 0
+        else:
+            speed_increment = velocity_mm_per_sec / acceleration_steps
+
+        acceleration = speed_increment / REAL_TIME_DT
+
+        if i <= acceleration_steps:
+            pos = 1/2 * acceleration * t**2
+        elif i <= acceleration_steps + linear_steps:
+            pos = 1/2 * acceleration * self._acceleration_time_s**2 \
+                  + velocity_mm_per_sec * (t - self._acceleration_time_s)
+        elif i < acceleration_steps + linear_steps + acceleration_steps:
+            t_dec = t - (self._acceleration_time_s + self.linear_time_s)
+            pos = 1/2 * acceleration * self._acceleration_time_s**2 \
+                + velocity_mm_per_sec * self.linear_time_s \
+                + velocity_mm_per_sec * t_dec \
+                + 1/2 * -acceleration * t_dec**2
+        elif i == (acceleration_steps + linear_steps + acceleration_steps):
+            pos = end_position
+        else:
+            pos = None
+
+        return pos
 
     def _interpolation_function(self, ix, iy, iz, ie):
         """ Get function for interpolation path. This function should returned
@@ -153,16 +165,11 @@ class PathGenerator():
                  tuple of times for each axis in us or None if movement for
                  axis is finished.
         """
-        print([ix, iy, iz, ie])
-        t_x = self.__linear(ix, STEPPER_PULSES_PER_MM_X, self._total_pulses_x,
-                            self.max_velocity_mm_per_sec.x)
-        t_y = self.__linear(iy, STEPPER_PULSES_PER_MM_Y, self._total_pulses_y,
-                            self.max_velocity_mm_per_sec.y)
-        t_z = self.__linear(iz, STEPPER_PULSES_PER_MM_Z, self._total_pulses_z,
-                            self.max_velocity_mm_per_sec.z)
-        t_e = self.__linear(ie, STEPPER_PULSES_PER_MM_E, self._total_pulses_e,
-                            self.max_velocity_mm_per_sec.e)
-        return self._direction, (t_x, t_y, t_z, t_e)
+        dp_x = self.__linear(ix, self.max_velocity_mm_per_sec.x, self._delta.x)
+        dp_y = self.__linear(iy, self.max_velocity_mm_per_sec.y, self._delta.y)
+        dp_z = self.__linear(iz, self.max_velocity_mm_per_sec.z, self._delta.z)
+        dp_e = self.__linear(ie, self.max_velocity_mm_per_sec.e, self._delta.e)
+        return dp_x, dp_y, dp_z, dp_e
 
     def __iter__(self):
         """ Get iterator.
@@ -177,38 +184,8 @@ class PathGenerator():
         self._iteration_y = 0
         self._iteration_z = 0
         self._iteration_e = 0
-        self._iteration_direction = None
         logging.debug(', '.join("%s: %s" % i for i in vars(self).items()))
         return self
-
-    def _to_accelerated_time(self, pt_s):
-        """ Internal function to translate uniform movement time to time for
-            accelerated movement.
-        :param pt_s: pseudo time of uniform movement.
-        :return: time for each axis or None if movement for axis is finished.
-        """
-        # acceleration
-        # S = Tpseudo * Vmax = a * t^2 / 2
-        t = math.sqrt(pt_s * self._2Vmax_per_a)
-        if t <= self._acceleration_time_s:
-            return t
-
-        # linear
-        # pseudo acceleration time Tpseudo = t^2 / ACCELERATION_FACTOR_PER_SEC
-        t = self._acceleration_time_s + pt_s - (self._acceleration_time_s ** 2
-                                                / self._2Vmax_per_a)
-        # pseudo breaking time
-        bt = t - self._acceleration_time_s - self._linear_time_s
-        if bt <= 0:
-            return t
-
-        # braking
-        d = self._acceleration_time_s ** 2 - self._2Vmax_per_a * bt
-        if d > 0:
-            d = math.sqrt(d)
-        else:
-            d = 0
-        return 2.0 * self._acceleration_time_s + self._linear_time_s - d
 
     def __next__(self):
         # for python3
@@ -217,9 +194,6 @@ class PathGenerator():
     def next(self):
         """ Iterate pulses.
         :return: Tuple of five values:
-                    - first is boolean value, if it is True, motors direction
-                        should be changed and next pulse should performed in
-                        this direction.
                     - values for all machine axises. For direction update,
                         positive values means forward movement, negative value
                         means reverse movement. For normal pulse, values are
@@ -228,55 +202,34 @@ class PathGenerator():
                  not be earlier in time then current. If there is no pulses
                  left StopIteration will be raised.
         """
-        direction, (tx, ty, tz, te) = \
-            self._interpolation_function(self._iteration_x, self._iteration_y,
-                                         self._iteration_z, self._iteration_e)
+        dp_x, dp_y, dp_z, dp_e = self._interpolation_function(self._iteration_x, self._iteration_y,
+                                                              self._iteration_z, self._iteration_e)
 
-        # for i in (tx, ty, tz, te):
-        #     print(i)
-
-        # check if direction update:
-        if direction != self._iteration_direction:
-            self._iteration_direction = direction
-            dir_x, dir_y, dir_z, dir_e = direction
-            return True, dir_x, dir_y, dir_z, dir_e
         # check condition to stop
-        if tx is None and ty is None and tz is None and te is None:
+        if dp_x is None and dp_y is None and dp_z is None and dp_z is None:
             raise StopIteration
 
-        # convert to real time
-        m = None
-        for i in (tx, ty, tz, te):
-            if i is not None and (m is None or i < m):
-                m = i
-        am = self._to_accelerated_time(m)
-        # sort pulses in time
-        if tx is not None:
-            if tx > m:
-                tx = None
-            else:
-                tx = am
-                self._iteration_x += 1
-        if ty is not None:
-            if ty > m:
-                ty = None
-            else:
-                ty = am
-                self._iteration_y += 1
-        if tz is not None:
-            if tz > m:
-                tz = None
-            else:
-                tz = am
-                self._iteration_z += 1
-        if te is not None:
-            if te > m:
-                te = None
-            else:
-                te = am
-                self._iteration_e += 1
+        if dp_x is not None:
+            if self._delta.x < 0:
+                dp_x = -dp_x
+            self._iteration_x += 1
+        if dp_y is not None:
+            if self._delta.y < 0:
+                dp_x = -dp_y
+            self._iteration_y += 1
+        if dp_z is not None:
+            if self._delta.z < 0:
+                dp_x = -dp_z
+            self._iteration_z += 1
+        if dp_z is not None:
+            if self._delta.e < 0:
+                dp_x = -dp_e
+            self._iteration_e += 1
 
-        return False, tx, ty, tz, te
+        return (self._start_pos.x + dp_x,
+                self._start_pos.y + dp_y,
+                self._start_pos.z + dp_z,
+                self._start_pos.e + dp_e)
 
     def total_time_s(self):
         """ Get total time for movement.

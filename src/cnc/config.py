@@ -15,7 +15,7 @@ TABLE_SIZE_Y_MM = 200
 TABLE_SIZE_Z_MM = 220
 
 # Mixed settings.
-TIP_MAX_ACCELERATION_MM_PER_S2 = 3000  # for all axis, mm per sec^2
+TIP_MAX_ACCELERATION_MM_PER_S2 = 30  # for all axis, mm per sec^2
 SPINDLE_MAX_RPM = 10000
 
 # -----------------------------------------------------------------------------
