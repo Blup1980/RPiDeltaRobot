@@ -57,15 +57,14 @@ class PathGenerator():
         self.max_velocity_mm_per_sec = self._adjust_velocity(distance_mm * (
             velocity_mm_per_min / SECONDS_IN_MINUTE / distance_total_mm))
         # acceleration time
-        self.acceleration_time_s = (self.max_velocity_mm_per_sec.find_max()
-                                    / STEPPER_MAX_ACCELERATION_MM_PER_S2)
+        self.acceleration_time_s = (self.max_velocity_mm_per_sec.find_max() / TIP_MAX_ACCELERATION_MM_PER_S2)
         # check if there is enough space to accelerate and brake, adjust time
         # S = a * t^2 / 2
-        if STEPPER_MAX_ACCELERATION_MM_PER_S2 * self.acceleration_time_s ** 2 \
+        if TIP_MAX_ACCELERATION_MM_PER_S2 * self.acceleration_time_s ** 2 \
                 > distance_total_mm:
             self.acceleration_time_s = \
                 math.sqrt(distance_total_mm
-                          / STEPPER_MAX_ACCELERATION_MM_PER_S2)
+                          / TIP_MAX_ACCELERATION_MM_PER_S2)
             self.linear_time_s = 0.0
             # V = a * t -> V = 2 * S / t, take half of total distance for
             # acceleration and braking
@@ -75,7 +74,7 @@ class PathGenerator():
             # calculate linear time
             linear_distance_mm = distance_total_mm \
                                  - self.acceleration_time_s ** 2 \
-                                 * STEPPER_MAX_ACCELERATION_MM_PER_S2
+                                 * TIP_MAX_ACCELERATION_MM_PER_S2
             self.linear_time_s = (linear_distance_mm
                                   / self.max_velocity_mm_per_sec.length())
         self._total_pulses_x = round(distance_mm.x * STEPPER_PULSES_PER_MM_X)
@@ -173,7 +172,7 @@ class PathGenerator():
          max_axis_velocity_mm_per_sec) = self._get_movement_parameters()
         # helper variable
         self._2Vmax_per_a = (2.0 * max_axis_velocity_mm_per_sec.find_max()
-                             / STEPPER_MAX_ACCELERATION_MM_PER_S2)
+                             / TIP_MAX_ACCELERATION_MM_PER_S2)
         self._iteration_x = 0
         self._iteration_y = 0
         self._iteration_z = 0
@@ -204,9 +203,6 @@ class PathGenerator():
             return t
 
         # braking
-        # Vmax * Tpseudo = Vlinear * t - a * t^2 / 2
-        # V on start braking is Vlinear = Taccel * a = Tbreaking * a
-        # Vmax * Tpseudo = Tbreaking * a * t - a * t^2 / 2
         d = self._acceleration_time_s ** 2 - self._2Vmax_per_a * bt
         if d > 0:
             d = math.sqrt(d)
@@ -243,14 +239,6 @@ class PathGenerator():
         if direction != self._iteration_direction:
             self._iteration_direction = direction
             dir_x, dir_y, dir_z, dir_e = direction
-            if STEPPER_INVERTED_X:
-                dir_x = -dir_x
-            if STEPPER_INVERTED_Y:
-                dir_y = -dir_y
-            if STEPPER_INVERTED_Z:
-                dir_z = -dir_z
-            if STEPPER_INVERTED_E:
-                dir_e = -dir_e
             return True, dir_x, dir_y, dir_z, dir_e
         # check condition to stop
         if tx is None and ty is None and tz is None and te is None:
