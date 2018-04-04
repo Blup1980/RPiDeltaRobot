@@ -8,7 +8,7 @@ from cnc.enums import *
 SECONDS_IN_MINUTE = 60.0
 
 
-class PulseGeneratorLinear(PulseGenerator):
+class PathGenerator():
     """ Stepper motors pulses generator.
         It generates time for each pulses for specified path as accelerated
         movement for specified velocity, then moves linearly and then braking
