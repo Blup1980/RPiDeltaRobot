@@ -8,15 +8,6 @@ MAX_VELOCITY_MM_PER_MIN_Y = 12000
 MAX_VELOCITY_MM_PER_MIN_Z = 600
 MAX_VELOCITY_MM_PER_MIN_E = 1500
 MIN_VELOCITY_MM_PER_MIN = 1
-# Average velocity for endstop calibration procedure
-CALIBRATION_VELOCITY_MM_PER_MIN = 300
-
-# Invert axises direction, by default(False) high level means increase of
-# position. For inverted(True) axis, high level means decrease of position.
-STEPPER_INVERTED_X = True
-STEPPER_INVERTED_Y = False
-STEPPER_INVERTED_Z = False
-STEPPER_INVERTED_E = True
 
 # Workplace physical size.
 TABLE_SIZE_X_MM = 200
@@ -24,7 +15,7 @@ TABLE_SIZE_Y_MM = 200
 TABLE_SIZE_Z_MM = 220
 
 # Mixed settings.
-STEPPER_MAX_ACCELERATION_MM_PER_S2 = 3000  # for all axis, mm per sec^2
+TIP_MAX_ACCELERATION_MM_PER_S2 = 3000  # for all axis, mm per sec^2
 SPINDLE_MAX_RPM = 10000
 
 # -----------------------------------------------------------------------------

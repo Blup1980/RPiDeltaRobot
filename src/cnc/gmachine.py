@@ -1,10 +1,11 @@
 from __future__ import division
 
 import cnc.logging_config as logging_config
-from cnc.pulses import *
+from cnc.path import *
 from cnc.coordinates import *
 from cnc.enums import *
-from cnc.watchdog import *
+import cnc.hal as hal
+import time
 
 
 class GMachineException(Exception):
@@ -27,10 +28,8 @@ class GMachine(object):
         self._spindle_rpm = 0
         self._local = None
         self._convertCoordinates = 0
-        self._plane = None
         self.reset()
         hal.init()
-        self.watchdog = HardwareWatchdog()
 
     def release(self):
         """ Free all resources.
@@ -48,7 +47,6 @@ class GMachine(object):
         self._spindle_rpm = 1000
         self._local = Coordinates(0.0, 0.0, 0.0, 0.0)
         self._convertCoordinates = 1.0
-        self._plane = PLANE_XY
 
     # noinspection PyMethodMayBeStatic
     def _spindle(self, spindle_speed):
@@ -73,7 +71,7 @@ class GMachine(object):
             raise GMachineException("out of effective area")
 
         logging.info("Moving linearly to{}".format(new_pos))
-        gen = PulseGeneratorLinear(delta, new_pos, velocity)
+        gen = PathGenerator(delta, new_pos, velocity)
         self.__check_velocity(gen.max_velocity())
         hal.move(gen)
         # save position
@@ -131,13 +129,6 @@ class GMachine(object):
         hal.join()
         return self._position
 
-    def plane(self):
-        """ Return current plane for circular interpolation. This function for
-            tests only.
-            :return current plane.
-        """
-        return self._plane
-
     def do_command(self, gcode):
         """ Perform action.
         :param gcode: GCode object which represent one gcode line
@@ -163,32 +154,7 @@ class GMachine(object):
         if velocity < MIN_VELOCITY_MM_PER_MIN:
             raise GMachineException("feed speed too low")
         # select command and run it
-        if c == 'G0':  # rapid move
-            vl = max(MAX_VELOCITY_MM_PER_MIN_X,
-                     MAX_VELOCITY_MM_PER_MIN_Y,
-                     MAX_VELOCITY_MM_PER_MIN_Z,
-                     MAX_VELOCITY_MM_PER_MIN_E)
-            length = delta.length()
-            if length > 0:
-                proportion = abs(delta) / length
-                if proportion.x > 0:
-                    v = int(MAX_VELOCITY_MM_PER_MIN_X / proportion.x)
-                    if v < vl:
-                        vl = v
-                if proportion.y > 0:
-                    v = int(MAX_VELOCITY_MM_PER_MIN_Y / proportion.y)
-                    if v < vl:
-                        vl = v
-                if proportion.z > 0:
-                    v = int(MAX_VELOCITY_MM_PER_MIN_Z / proportion.z)
-                    if v < vl:
-                        vl = v
-                if proportion.e > 0:
-                    v = int(MAX_VELOCITY_MM_PER_MIN_E / proportion.e)
-                    if v < vl:
-                        vl = v
-            self._move_linear(coord, vl)
-        elif c == 'G1':  # linear interpolation
+        if c == 'G1':  # linear interpolation
             self._move_linear(coord, velocity)
         elif c == 'G4':  # delay in s
             if not gcode.has('P'):
@@ -198,12 +164,6 @@ class GMachine(object):
                 raise GMachineException("bad delay")
             hal.join()
             time.sleep(pause)
-        elif c == 'G17':  # XY plane select
-            self._plane = PLANE_XY
-        elif c == 'G18':  # ZX plane select
-            self._plane = PLANE_ZX
-        elif c == 'G19':  # YZ plane select
-            self._plane = PLANE_YZ
         elif c == 'G20':  # switch to inches
             self._convertCoordinates = 25.4
         elif c == 'G21':  # switch to mm

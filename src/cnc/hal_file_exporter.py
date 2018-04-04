@@ -1,7 +1,7 @@
 from __future__ import division
 import time
 
-from cnc.pulses import *
+from cnc.path import *
 from cnc.config import *
 
 """ This is virtual device class which is very useful for debugging.
@@ -38,18 +38,6 @@ def disable_steppers():
     logging.info("hal disable steppers")
 
 
-def calibrate(x, y, z):
-    """ Move head to home position till end stop switch will be triggered.
-    Do not return till all procedures are completed.
-    :param x: boolean, True to calibrate X axis.
-    :param y: boolean, True to calibrate Y axis.
-    :param z: boolean, True to calibrate Z axis.
-    :return: boolean, True if all specified end stops were triggered.
-    """
-    logging.info("hal calibrate, x={}, y={}, z={}".format(x, y, z))
-    return True
-
-
 # noinspection PyUnusedLocal
 def move(generator):
     """ Move head to specified position.
@@ -68,15 +56,7 @@ def move(generator):
         if direction:
             direction_found = True
             direction_x, direction_y, direction_z, direction_e = tx, ty, tz, te
-            if STEPPER_INVERTED_X:
-                direction_x = -direction_x
-            if STEPPER_INVERTED_Y:
-                direction_y = -direction_y
-            if STEPPER_INVERTED_Z:
-                direction_z = -direction_z
-            if STEPPER_INVERTED_E:
-                direction_e = -direction_e
-            if isinstance(generator, PulseGeneratorLinear):
+            if isinstance(generator, PathGenerator):
                 assert ((direction_x < 0 and delta.x < 0)
                         or (direction_x > 0 and delta.x > 0) or delta.x == 0)
                 assert ((direction_y < 0 and delta.y < 0)
@@ -167,8 +147,3 @@ def deinit():
     """
     logging.info("hal deinit()")
 
-
-def watchdog_feed():
-    """ Feed hardware watchdog.
-    """
-    pass
