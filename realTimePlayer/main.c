@@ -1,34 +1,29 @@
-/*                                                                  
- * POSIX Real Time Example
- * using a single pthread as RT thread
- */
-
 #include <limits.h>
 #include <pthread.h>
 #include <sched.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <sys/mman.h>
 #include <time.h>
 
-#define RT_PERIOD_NS 4000UL
+#define FAKE_TARGET
 
+#define RT_PERIOD_US 40000UL
+#define PWM_PERIOD_NS 20000000UL
 
-typedef struct {
-	float x;
-	float y;
-	float z;
-} pos_t;
+#define MODEL_M 531034.0
+#define MODEL_H 1550000.0
+
 
 typedef struct linkedList {
-	pos_t pos;
+	float ang[3];
+	unsigned int duty[3];
 	struct linkedList *next;
 } linkedList_t;
 
-
 linkedList_t *pos_list_head = NULL;
 linkedList_t *pos_list_current = NULL;
-
 
 void timespec_add_us(struct timespec *t, long us)
 {
@@ -39,24 +34,104 @@ void timespec_add_us(struct timespec *t, long us)
 	}
 }
 
+unsigned int ang_to_duty(float angle){
+	return (unsigned int)(MODEL_M*angle + MODEL_H);
+}
+
+void init_channel(int channelNb) {
+	char pwm_path[35];
+	char enable_path[35];
+	char duty_path[35];
+	char period_path[35];
+	const unsigned long int pwm_period = PWM_PERIOD_NS;
+	FILE *fd;
+
+	sprintf(pwm_path,"/sys/class/pwm/pwmchip0/pwm%d",channelNb);
+	sprintf(enable_path,"/sys/class/pwm/pwmchip0/pwm%d/enable",channelNb);
+	sprintf(period_path,"/sys/class/pwm/pwmchip0/pwm%d/duty_cycle",channelNb);
+
+	if( access( pwm_path, F_OK ) == -1 ) {
+		fd = fopen("/sys/class/pwm/pwmchip0/export","w");
+		if(fd == NULL) {
+			printf("can't open %s\n",pwm_path);
+			exit(-2);
+		}
+		fprintf(fd,"1");
+		fclose(fd);
+	}
+
+	fd = fopen(period_path,"w");
+	if(fd == NULL) {
+		printf("can't open %s\n",period_path);
+		exit(-2);
+	}
+	fprintf(fd,"%lu",pwm_period);
+	fclose(fd);
+
+	fd = fopen(enable_path,"w");
+	if(fd == NULL) {
+		printf("can't open %s\n",enable_path);
+		exit(-2);
+	}
+	fprintf(fd,"1");
+	fclose(fd);
+}
+
 
 void *thread_func(void *data)
 {
 	struct timespec next;
 	struct timespec now;
-	clock_gettime(CLOCK_REALTIME, &next);
 
+#ifndef FAKE_TARGET
+	const char *pwm_path0 = "/sys/class/pwm/pwmchip0/pwm0/duty_cycle";
+	const char *pwm_path1 = "/sys/class/pwm/pwmchip0/pwm1/duty_cycle";
+	const char *pwm_path2 = "/sys/class/pwm/pwmchip0/pwm2/duty_cycle";
+
+	FILE *fd_pwm0;
+	FILE *fd_pwm1;
+	FILE *fd_pwm2;
+
+	fd_pwm0 = fopen(pwm_path0,"w");
+	if(fd_pwm0 == NULL) {
+		printf("can't open %s\n",pwm_path0);
+		return NULL;
+	}
+	fd_pwm1 = fopen(pwm_path1,"w");
+	if(fd_pwm1 == NULL) {
+		printf("can't open %s\n",pwm_path1);
+		return NULL;
+	}
+	fd_pwm2 = fopen(pwm_path2,"w");
+	if(fd_pwm2 == NULL) {
+		printf("can't open %s\n",pwm_path2);
+		return NULL;
+	}
+#endif
+
+	clock_gettime(CLOCK_REALTIME, &next);
 	pos_list_current = pos_list_head;
 	while (pos_list_current) {
-		timespec_add_us(&next, RT_PERIOD_NS);
+		timespec_add_us(&next, RT_PERIOD_US);
 //      printf("nextTimeis: %lds, %luns\n", next.tv_sec, next.tv_nsec);
 		clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &next, NULL);
 
-		printf("%f %f %f\n",pos_list_current->pos.x,
-						pos_list_current->pos.y,
-						pos_list_current->pos.z);
+		printf("%f %f %f\n",pos_list_current->ang[0],
+							pos_list_current->ang[1],
+							pos_list_current->ang[2]);
+#ifndef FAKE_TARGET
+		fprintf(fd_pwm0,"%d\n",pos_list_current->duty[0]);
+		fprintf(fd_pwm1,"%d\n",pos_list_current->duty[1]);
+		fprintf(fd_pwm2,"%d\n",pos_list_current->duty[2]);
+#endif
+
 		pos_list_current = pos_list_current->next;
 	}
+#ifndef FAKE_TARGET
+	fclose(fd_pwm0);
+	fclose(fd_pwm1);
+	fclose(fd_pwm2);
+#endif
 	return NULL;
 }
 
@@ -75,9 +150,14 @@ int main(int argc, char* argv[])
 		if (sscanf(cmd_str,"rt-cmd:POS %f %f %f",&x, &y, &z) != 0) {
 			pos_list_current = malloc(sizeof(linkedList_t));
 
-			pos_list_current->pos.x = x;
-			pos_list_current->pos.y = y;
-			pos_list_current->pos.z = z;
+			pos_list_current->ang[0] = x;
+			pos_list_current->ang[1] = y;
+			pos_list_current->ang[2] = z;
+
+			pos_list_current->duty[0] = ang_to_duty(x);
+			pos_list_current->duty[1] = ang_to_duty(y);
+			pos_list_current->duty[2] = ang_to_duty(z);
+
 			pos_list_current->next = pos_list_head;
 			pos_list_head = pos_list_current;
 		}
@@ -86,7 +166,11 @@ int main(int argc, char* argv[])
 		free(cmd_str);
 	}
 
-
+#ifndef FAKE_TARGET
+	init_channel(0);
+	init_channel(1);
+	init_channel(2);
+#endif
 
 	/* Lock memory */
 	if(mlockall(MCL_CURRENT|MCL_FUTURE) == -1) {
