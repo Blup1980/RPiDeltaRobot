@@ -49,14 +49,15 @@ class HalFileExporter:
         """
         for tx, ty, tz, te in generator:
             self.robot.update_from_new_tip_pos(np.array([tx/1000, ty/1000, tz/1000+DELTA_Z_OFFSET]))
+            theta = self.robot.motor_angles()
             if self.robot.valid:
-                theta = self.robot.motor_angles()
                 print("tip: {:f} {:f} {:f}".format(tx, ty, tz))
                 self.print_rt("POS {:f} {:f} {:f}".format(MOTOR0_OFFSET_RAD - theta[0],
                                                           MOTOR1_OFFSET_RAD - theta[1],
                                                           MOTOR2_OFFSET_RAD - theta[2]))
             else:
-                raise GHalException("Impossible delta geometry")
+                raise GHalException("Impossible delta geometry, (tip: {:f} {:f} {:f}) angles: {:f} {:f} {:f}".format(
+                    tx, ty, tz, theta[0], theta[1], theta[2]))
 
     # noinspection PyMethodMayBeStatic
     def join(self):

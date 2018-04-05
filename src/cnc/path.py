@@ -211,15 +211,15 @@ class PathGenerator:
             self._iteration_x += 1
         if dp_y is not None:
             if self._delta.y < 0:
-                dp_x = -dp_y
+                dp_y = -dp_y
             self._iteration_y += 1
         if dp_z is not None:
             if self._delta.z < 0:
-                dp_x = -dp_z
+                dp_z = -dp_z
             self._iteration_z += 1
-        if dp_z is not None:
+        if dp_e is not None:
             if self._delta.e < 0:
-                dp_x = -dp_e
+                dp_e = -dp_e
             self._iteration_e += 1
 
         return (self._start_pos.x + dp_x,
