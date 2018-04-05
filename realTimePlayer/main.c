@@ -48,7 +48,7 @@ void init_channel(int channelNb) {
 
 	sprintf(pwm_path,"/sys/class/pwm/pwmchip0/pwm%d",channelNb);
 	sprintf(enable_path,"/sys/class/pwm/pwmchip0/pwm%d/enable",channelNb);
-	sprintf(period_path,"/sys/class/pwm/pwmchip0/pwm%d/duty_cycle",channelNb);
+	sprintf(period_path,"/sys/class/pwm/pwmchip0/pwm%d/period",channelNb);
 
 	if( access( pwm_path, F_OK ) == -1 ) {
 		fd = fopen("/sys/class/pwm/pwmchip0/export","w");
@@ -56,7 +56,7 @@ void init_channel(int channelNb) {
 			printf("can't open %s\n",pwm_path);
 			exit(-2);
 		}
-		fprintf(fd,"1");
+		fprintf(fd,"%d",channelNb);
 		fclose(fd);
 	}
 
@@ -88,50 +88,61 @@ void *thread_func(void *data)
 	const char *pwm_path1 = "/sys/class/pwm/pwmchip0/pwm1/duty_cycle";
 	const char *pwm_path2 = "/sys/class/pwm/pwmchip0/pwm2/duty_cycle";
 
-	FILE *fd_pwm0;
-	FILE *fd_pwm1;
-	FILE *fd_pwm2;
 
-	fd_pwm0 = fopen(pwm_path0,"w");
-	if(fd_pwm0 == NULL) {
-		printf("can't open %s\n",pwm_path0);
-		return NULL;
-	}
-	fd_pwm1 = fopen(pwm_path1,"w");
-	if(fd_pwm1 == NULL) {
-		printf("can't open %s\n",pwm_path1);
-		return NULL;
-	}
-	fd_pwm2 = fopen(pwm_path2,"w");
-	if(fd_pwm2 == NULL) {
-		printf("can't open %s\n",pwm_path2);
-		return NULL;
-	}
+
+	//setbuf(fd_pwm0, NULL);
+	//setbuf(fd_pwm1, NULL);
+	//setbuf(fd_pwm2, NULL);
+
 #endif
 
 	clock_gettime(CLOCK_REALTIME, &next);
 	pos_list_current = pos_list_head;
 	while (pos_list_current) {
+		FILE *fd_pwm0;
+		FILE *fd_pwm1;
+		FILE *fd_pwm2;
 		timespec_add_us(&next, RT_PERIOD_US);
-//      printf("nextTimeis: %lds, %luns\n", next.tv_sec, next.tv_nsec);
+
 		clock_nanosleep(CLOCK_REALTIME, TIMER_ABSTIME, &next, NULL);
+#ifndef FAKE_TARGET
+		fd_pwm0 = fopen(pwm_path0,"w");
+		if(fd_pwm0 == NULL) {
+			printf("can't open %s\n",pwm_path0);
+			return NULL;
+		}
+		fd_pwm1 = fopen(pwm_path1,"w");
+		if(fd_pwm1 == NULL) {
+			printf("can't open %s\n",pwm_path1);
+			return NULL;
+		}
+		fd_pwm2 = fopen(pwm_path2,"w");
+		if(fd_pwm2 == NULL) {
+			printf("can't open %s\n",pwm_path2);
+			return NULL;
+		}
+#endif
+
+//      printf("nextTimeis: %lds, %luns\n", next.tv_sec, next.tv_nsec);
+
 
 		printf("%f %f %f\n",pos_list_current->ang[0],
 							pos_list_current->ang[1],
 							pos_list_current->ang[2]);
 #ifndef FAKE_TARGET
-		fprintf(fd_pwm0,"%d\n",pos_list_current->duty[0]);
-		fprintf(fd_pwm1,"%d\n",pos_list_current->duty[1]);
-		fprintf(fd_pwm2,"%d\n",pos_list_current->duty[2]);
+		//printf("writing duty of %d in channel 0\n", pos_list_current->duty[0]);
+		fprintf(fd_pwm0,"%d",pos_list_current->duty[0]);
+		//printf("writing duty of %d in channel 1\n", pos_list_current->duty[1]);
+		fprintf(fd_pwm1,"%d",pos_list_current->duty[1]);
+		//printf("writing duty of %d in channel 2\n", pos_list_current->duty[2]);
+		fprintf(fd_pwm2,"%d",pos_list_current->duty[2]);
+		fclose(fd_pwm0);
+		fclose(fd_pwm1);
+		fclose(fd_pwm2);
 #endif
 
 		pos_list_current = pos_list_current->next;
 	}
-#ifndef FAKE_TARGET
-	fclose(fd_pwm0);
-	fclose(fd_pwm1);
-	fclose(fd_pwm2);
-#endif
 	return NULL;
 }
 

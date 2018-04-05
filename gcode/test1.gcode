@@ -40,3 +40,4 @@ M2
 (Using default footer. To add your own footer create file "footer" in the output dir.)
 (end)
 %
+exit

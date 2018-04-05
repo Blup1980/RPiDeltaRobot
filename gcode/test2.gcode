@@ -5,3 +5,5 @@ G1 X8 Y-8
 G1 X-8 Y-8
 G1 X-8 Y8
 G1 X0 Y0
+M2
+exit

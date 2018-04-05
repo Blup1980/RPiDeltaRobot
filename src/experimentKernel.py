@@ -23,7 +23,7 @@ s1.move_to_angle(-startPos + zero_offset)
 s2.move_to_angle(-startPos + zero_offset)
 time.sleep(1)
 
-pos = [ 0, 0, 0]
+pos = np.array([0, 0, 0])
 try:
     while True:
         for r in radius:
