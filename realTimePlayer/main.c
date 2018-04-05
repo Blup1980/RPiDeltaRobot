@@ -9,8 +9,9 @@
 
 //#define FAKE_TARGET
 
-#define RT_PERIOD_US 40000UL
 #define PWM_PERIOD_NS 20000000UL
+#define RT_PERIOD_US  (PWM_PERIOD_NS/1000)
+
 
 #define MODEL_M 531034.0
 #define MODEL_H 1550000.0
