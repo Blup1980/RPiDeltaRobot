@@ -2,17 +2,18 @@
 # Hardware config.
 REAL_TIME_DT = 1.0/25.0
 
+DELTA_SMALL_L = 0.04
+DELTA_BIG_L = 0.02
+DELTA_WB = 0.02
+DELTA_UP = 0.00922
+DELTA_Z_OFFSET = 0.04
+
 # Maximum velocity for each axis in millimeter per minute.
 MAX_VELOCITY_MM_PER_MIN_X = 24000
 MAX_VELOCITY_MM_PER_MIN_Y = 12000
 MAX_VELOCITY_MM_PER_MIN_Z = 600
 MAX_VELOCITY_MM_PER_MIN_E = 1500
 MIN_VELOCITY_MM_PER_MIN = 1
-
-# Workplace physical size.
-TABLE_SIZE_X_MM = 200
-TABLE_SIZE_Y_MM = 200
-TABLE_SIZE_Z_MM = 220
 
 # Mixed settings.
 TIP_MAX_ACCELERATION_MM_PER_S2 = 30  # for all axis, mm per sec^2

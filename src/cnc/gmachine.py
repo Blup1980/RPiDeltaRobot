@@ -4,7 +4,7 @@ import cnc.logging_config as logging_config
 from cnc.path import *
 from cnc.coordinates import *
 from cnc.enums import *
-import cnc.hal as hal
+from cnc.hal import *
 import time
 
 
@@ -29,13 +29,13 @@ class GMachine(object):
         self._local = None
         self._convertCoordinates = 0
         self.reset()
-        hal.init()
+        self._hal = HalFileExporter()
 
     def release(self):
         """ Free all resources.
         """
         self._spindle(0)
-        hal.deinit()
+        self._hal.deinit()
 
     def reset(self):
         """ Reinitialize all program configurable thing.
@@ -50,8 +50,8 @@ class GMachine(object):
 
     # noinspection PyMethodMayBeStatic
     def _spindle(self, spindle_speed):
-        hal.join()
-        hal.spindle_control(100.0 * spindle_speed / SPINDLE_MAX_RPM)
+        self._hal.join()
+        self._hal.spindle_control(100.0 * spindle_speed / SPINDLE_MAX_RPM)
 
     # noinspection PyMethodMayBeStatic
     def __check_velocity(self, max_velocity):
@@ -65,15 +65,13 @@ class GMachine(object):
         delta = new_pos - self._position
         if delta.is_zero():
             return
-        if not new_pos.is_in_aabb(Coordinates(0.0, 0.0, 0.0, 0.0),
-                                  Coordinates(TABLE_SIZE_X_MM, TABLE_SIZE_Y_MM,
-                                              TABLE_SIZE_Z_MM, 0)):
+        if not self._hal.check_valid_position(new_pos.x, new_pos.y, new_pos.z):
             raise GMachineException("out of effective area")
 
         logging.info("Moving linearly to{}".format(new_pos))
         gen = PathGenerator(delta, new_pos, velocity)
         self.__check_velocity(gen.max_velocity())
-        hal.move(gen)
+        self._hal.move(gen)
         # save position
         self._position = new_pos
 
@@ -126,7 +124,7 @@ class GMachine(object):
             This function for tests only.
             :return current position.
         """
-        hal.join()
+        self._hal.join()
         return self._position
 
     def do_command(self, gcode):
@@ -147,14 +145,13 @@ class GMachine(object):
         coord = gcode.coordinates(self._position - self._local,
                                   self._convertCoordinates)
         coord = coord + self._local
-        delta = coord - self._position
 
         velocity = gcode.get('F', self._velocity)
         # check parameters
         if velocity < MIN_VELOCITY_MM_PER_MIN:
             raise GMachineException("feed speed too low")
         # select command and run it
-        if c == 'G1':  # linear interpolation
+        if (c == 'G0') or (c == 'G1'):  # linear interpolation
             self._move_linear(coord, velocity)
         elif c == 'G4':  # delay in s
             if not gcode.has('P'):
@@ -162,7 +159,6 @@ class GMachine(object):
             pause = gcode.get('P', 0)
             if pause < 0:
                 raise GMachineException("bad delay")
-            hal.join()
             time.sleep(pause)
         elif c == 'G20':  # switch to inches
             self._convertCoordinates = 25.4
@@ -173,9 +169,7 @@ class GMachine(object):
             if axises == (False, False, False):
                 axises = True, True, True
             self.safe_zero(*axises)
-            hal.join()
-            if not hal.calibrate(*axises):
-                raise GMachineException("failed to calibrate")
+            self._hal.join()
         elif c == 'G53':  # switch to machine coords
             self._local = Coordinates(0.0, 0.0, 0.0, 0.0)
         elif c == 'G90':  # switch to absolute coords
@@ -203,11 +197,11 @@ class GMachine(object):
         elif c == 'M2' or c == 'M30':  # program finish, reset everything.
             self.reset()
         elif c == 'M84':  # disable motors
-            hal.disable_steppers()
+            self._hal.disable_steppers()
         elif c == 'M111':  # enable debug
             logging_config.debug_enable()
         elif c == 'M114':  # get current position
-            hal.join()
+            self._hal.join()
             p = self.position()
             answer = "X:{} Y:{} Z:{} E:{}".format(p.x, p.y, p.z, p.e)
         elif c is None:  # command not specified(ie just F was passed)

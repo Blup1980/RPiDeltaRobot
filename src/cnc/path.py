@@ -188,10 +188,6 @@ class PathGenerator:
         return self
 
     def __next__(self):
-        # for python3
-        return self.next()
-
-    def next(self):
         """ Iterate pulses.
         :return: Tuple of five values:
                     - values for all machine axises. For direction update,

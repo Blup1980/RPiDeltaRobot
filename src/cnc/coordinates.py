@@ -24,22 +24,6 @@ class Coordinates(object):
         return (self.x == 0.0 and self.y == 0.0 and self.z == 0.0
                 and self.e == 0.0)
 
-    def is_in_aabb(self, p1, p2):
-        """ Check coordinates are in aabb(Axis-Aligned Bounding Box).
-            aabb is specified with two points. E is ignored.
-        :param p1: First point in Coord object.
-        :param p2: Second point in Coord object.
-        :return: boolean value.
-        """
-        min_x, max_x = sorted((p1.x, p2.x))
-        min_y, max_y = sorted((p1.y, p2.y))
-        min_z, max_z = sorted((p1.z, p2.z))
-        if self.x < min_x or self.y < min_y or self.z < min_z:
-            return False
-        if self.x > max_x or self.y > max_y or self.z > max_z:
-            return False
-        return True
-
     def length(self):
         """ Calculate the length of vector.
         :return: Vector length.

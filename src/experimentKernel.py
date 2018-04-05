@@ -1,10 +1,8 @@
 #!/usr/bin/python3
 
-import numpy as np
 import time
-import math
 from servo import servo
-from  deltaRobot import *
+from cnc.deltaRobot import *
 
 
 s0 = servo.ServoKernel(0)
@@ -35,9 +33,10 @@ try:
                 pos[2] = -0.04
                 meca.update_from_new_tip_pos(pos)
                 #print(meca.theta)
-                s0.move_to_angle(-meca.theta[0]+zero_offset)
-                s1.move_to_angle(-meca.theta[1]+zero_offset)
-                s2.move_to_angle(-meca.theta[2]+zero_offset)
+                theta = meca.motor_angles()
+                s0.move_to_angle(-theta[0]+zero_offset)
+                s1.move_to_angle(-theta[1]+zero_offset)
+                s2.move_to_angle(-theta[2]+zero_offset)
                 #time.sleep(0.01)
 except KeyboardInterrupt:
     s0.close()

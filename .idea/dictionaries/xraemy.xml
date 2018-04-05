@@ -4,8 +4,10 @@
       <w>adafruit</w>
       <w>allcall</w>
       <w>busnum</w>
+      <w>coords</w>
       <w>cpuinfo</w>
       <w>extruder</w>
+      <w>gcode</w>
       <w>invrt</w>
       <w>outdrv</w>
       <w>prescale</w>

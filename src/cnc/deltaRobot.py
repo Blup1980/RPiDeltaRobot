@@ -4,6 +4,22 @@ import numpy as np
 import math
 
 
+class DeltaMotor:
+    def __init__(self):
+        self.angle = 0.0
+        self.speed = 0.0
+        self.angle_max = math.radians(120.0)
+        self.angle_min = math.radians(-160.0)
+        self.valid = True
+
+    def set_angle(self, angle):
+        if np.isnan(angle) or (angle < self.angle_min) or (self.angle_max < angle):
+            self.valid = False
+        else:
+            self.valid = True
+            self.angle = angle
+
+
 class DeltaMechanics:
     def __init__(self, L, l, wb, up):
         """
@@ -36,10 +52,14 @@ class DeltaMechanics:
         self.b = self.sp/2.0 - np.sqrt(3.0)*self.wb/2.0
         self.c = self.up/2.0 - self.wb/2.0
 
-        self.theta = np.array([0.0, 0.0, 0.0])
         self.tip_pos = np.array([0.0, 0.0, 0.0])
         self.theta_prime = np.array([0.0, 0.0, 0.0])
         self.valid = False
+
+        self.motors = [DeltaMotor() for i in range(3)]
+
+    def motor_angles(self):
+        return np.array([mot.angle for mot in self.motors])
 
     def update_from_new_tip_pos(self, tip_pos):
         """
@@ -77,14 +97,15 @@ class DeltaMechanics:
         f3 = 2.0*z*self.L
         g3 = alpha + self.b**2 + self.c**2 + 2.0*(-x*self.b + y*self.c)
 
-        self.theta[0] = self._solve_ipk(e1, f1, g1)
-        self.theta[1] = self._solve_ipk(e2, f2, g2)
-        self.theta[2] = self._solve_ipk(e3, f3, g3)
+        self.motors[0].set_angle(self._solve_ipk(e1, f1, g1))
+        self.motors[1].set_angle(self._solve_ipk(e2, f2, g2))
+        self.motors[2].set_angle(self._solve_ipk(e3, f3, g3))
 
-        if any(np.isnan(self.theta)):
-            self.valid = False
-        else:
+        motor_validity = [mot.valid for mot in self.motors]
+        if all(motor_validity):
             self.valid = True
+        else:
+            self.valid = False
 
     def _solve_ipk(self, e, f, g):
         delta = e**2 + f**2 - g**2
@@ -123,25 +144,29 @@ class DeltaMechanics:
         y = self.tip_pos[1]
         z = self.tip_pos[2]
 
-        ma = np.matrix([[x,
-                         y + self.a + self.L * np.cos(self.theta[0]),
-                         z + self.L * np.sin(self.theta[0])],
-                        [2*(x+self.b)-np.sqrt(3)*self.L*np.cos(self.theta[1]),
-                         2*(y+self.c)-self.L*np.cos(self.theta[1]),
-                         2*(z+self.L*np.sin(self.theta[1]))],
-                        [2*(x-self.b)+np.sqrt(3)*self.L*np.cos(self.theta[2]),
-                         2*(y+self.c)-self.L*np.cos(self.theta[2]),
-                         2*(z+self.L*np.sin(self.theta[2]))]])
+        theta0 = self.motors[0].angle
+        theta1 = self.motors[1].angle
+        theta2 = self.motors[2].angle
 
-        inv_mb = np.matrix([[1.0/(self.L*((y+self.a)*np.sin(self.theta[0])-z*np.cos(self.theta[0]))),
+        ma = np.matrix([[x,
+                         y + self.a + self.L * np.cos(theta0),
+                         z + self.L * np.sin(theta0)],
+                        [2*(x+self.b)-np.sqrt(3)*self.L*np.cos(theta1),
+                         2*(y+self.c)-self.L*np.cos(theta1),
+                         2*(z+self.L*np.sin(theta1))],
+                        [2*(x-self.b)+np.sqrt(3)*self.L*np.cos(theta2),
+                         2*(y+self.c)-self.L*np.cos(theta2),
+                         2*(z+self.L*np.sin(theta2))]])
+
+        inv_mb = np.matrix([[1.0/(self.L*((y+self.a)*np.sin(theta0)-z*np.cos(theta0))),
                              0,
                              0],
                             [0,
-                             -1.0/(self.L*((np.sqrt(3)*(x+self.b)+y+self.c)*np.sin(self.theta[1])+2.0*z*np.cos(self.theta[1]))),
+                             -1.0/(self.L*((np.sqrt(3)*(x+self.b)+y+self.c)*np.sin(theta1)+2.0*z*np.cos(theta1))),
                              0],
                             [0,
                              0,
-                             1.0/(self.L*((np.sqrt(3)*(x-self.b)-y-self.c)*np.sin(self.theta[2])-2.0*z*np.cos(self.theta[2])))]])
+                             1.0/(self.L*((np.sqrt(3)*(x-self.b)-y-self.c)*np.sin(theta2)-2.0*z*np.cos(theta2)))]])
 
         self.theta_prime = inv_mb * ma * tip_speed
 
@@ -161,10 +186,4 @@ class DeltaMechanics:
 
 
 if __name__ == '__main__':
-    mech = DeltaMechanics(L=0.524, l=1.244, wb=0.164, up=0.044)
-    mech.update_from_new_tip_pos(np.array([0, 0, -0.9]))
-    print(mech.theta)
-    print(mech.valid)
-    mech.update_from_new_tip_pos(np.array([0.3, 0.5, -5.1]))
-    print(mech.theta)
-    print(mech.valid)
+    pass

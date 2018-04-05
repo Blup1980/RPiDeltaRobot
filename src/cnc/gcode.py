@@ -78,7 +78,10 @@ class GCode(object):
         :return: String with command or None if no command specified.
         """
         if 'G' in self.params:
-            return 'G' + self.params['G']
+            code = self.params['G']
+            if code[0] == '0':
+                code = code[1:]
+            return 'G' + code
         if 'M' in self.params:
             return 'M' + self.params['M']
         return None
