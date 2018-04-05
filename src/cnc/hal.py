@@ -51,7 +51,7 @@ class HalFileExporter:
             self.robot.update_from_new_tip_pos(np.array([tx/1000, ty/1000, tz/1000+DELTA_Z_OFFSET]))
             if self.robot.valid:
                 theta = self.robot.motor_angles()
-                # print("tip: {:f} {:f} {:f}".format(tx, ty, tz))
+                print("tip: {:f} {:f} {:f}".format(tx, ty, tz))
                 self.print_rt("POS {:f} {:f} {:f}".format(theta[0], theta[1], theta[2]))
             else:
                 raise GHalException("Impossible delta geometry")
