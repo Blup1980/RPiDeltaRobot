@@ -98,7 +98,7 @@ void *thread_func(void *data)
 
 	clock_gettime(CLOCK_REALTIME, &next);
 	pos_list_current = pos_list_head;
-	while (pos_list_current) {
+	while (pos_list_current->next) {
 		FILE *fd_pwm0;
 		FILE *fd_pwm1;
 		FILE *fd_pwm2;
@@ -157,20 +157,22 @@ int main(int argc, char* argv[])
 	size_t cmd_size = 0;
 	float x, y, z;
 
+	pos_list_head = malloc(sizeof(linkedList_t));
+	pos_list_current = pos_list_head;
+
 	while( getline(&cmd_str, &cmd_size, stdin) != -1) {
 		if (sscanf(cmd_str,"rt-cmd:POS %f %f %f",&x, &y, &z) != 0) {
-			pos_list_current = malloc(sizeof(linkedList_t));
 
 			pos_list_current->ang[0] = x;
 			pos_list_current->ang[1] = y;
 			pos_list_current->ang[2] = z;
-
 			pos_list_current->duty[0] = ang_to_duty(x);
 			pos_list_current->duty[1] = ang_to_duty(y);
 			pos_list_current->duty[2] = ang_to_duty(z);
+			pos_list_current->next = malloc(sizeof(linkedList_t));
 
-			pos_list_current->next = pos_list_head;
-			pos_list_head = pos_list_current;
+			pos_list_current = pos_list_current->next;
+			pos_list_current->next = NULL;
 		}
 	}
 	if (cmd_str != NULL) {
