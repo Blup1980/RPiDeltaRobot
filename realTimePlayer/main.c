@@ -7,7 +7,7 @@
 #include <sys/mman.h>
 #include <time.h>
 
-#define FAKE_TARGET
+//#define FAKE_TARGET
 
 #define RT_PERIOD_US 40000UL
 #define PWM_PERIOD_NS 20000000UL
@@ -141,7 +141,7 @@ int main(int argc, char* argv[])
 	struct sched_param param;
 	pthread_attr_t attr;
 	pthread_t thread;
-	int ret;
+	int ret = 0;
 	char *cmd_str = NULL;
 	size_t cmd_size = 0;
 	float x, y, z;
@@ -232,7 +232,6 @@ int main(int argc, char* argv[])
 		if (to_free != NULL)
 			free(to_free);
 	}
-
 
 	return ret;
 }
