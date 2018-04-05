@@ -52,7 +52,9 @@ class HalFileExporter:
             if self.robot.valid:
                 theta = self.robot.motor_angles()
                 print("tip: {:f} {:f} {:f}".format(tx, ty, tz))
-                self.print_rt("POS {:f} {:f} {:f}".format(theta[0], theta[1], theta[2]))
+                self.print_rt("POS {:f} {:f} {:f}".format(MOTOR0_OFFSET_RAD - theta[0],
+                                                          MOTOR1_OFFSET_RAD - theta[1],
+                                                          MOTOR2_OFFSET_RAD - theta[2]))
             else:
                 raise GHalException("Impossible delta geometry")
 
