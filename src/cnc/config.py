@@ -20,7 +20,7 @@ MAX_VELOCITY_MM_PER_MIN_E = 1500
 MIN_VELOCITY_MM_PER_MIN = 1
 
 # Mixed settings.
-TIP_MAX_ACCELERATION_MM_PER_S2 = 30  # for all axis, mm per sec^2
+TIP_MAX_ACCELERATION_MM_PER_S2 = 3000  # for all axis, mm per sec^2
 SPINDLE_MAX_RPM = 10000
 
 # -----------------------------------------------------------------------------

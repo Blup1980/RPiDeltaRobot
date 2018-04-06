@@ -44,12 +44,12 @@ class PathGenerator:
         self._iteration_y = 0
         self._iteration_z = 0
         self._iteration_e = 0
-        self._acceleration_time_s = 0.0
         self._linear_time_s = 0.0
         self._2Vmax_per_a = 0.0
         self._delta = delta_mm
         self._start_pos = new_pos - delta_mm
         self._end_pos = new_pos
+        self._last_iteration = False
 
         distance_mm = abs(delta_mm)  # type: Coordinates
         # velocity of each axis
@@ -58,23 +58,28 @@ class PathGenerator:
             velocity_mm_per_min / SECONDS_IN_MINUTE / distance_total_mm))
         # acceleration time
         self.acceleration_time_s = (self.max_velocity_mm_per_sec.find_max() / TIP_MAX_ACCELERATION_MM_PER_S2)
-        self.acceleration_time_s = floor(self.acceleration_time_s / REAL_TIME_DT) * REAL_TIME_DT
+        self.acceleration_time_s = self._round_to_previous_dt(self.acceleration_time_s)
 
         # check if there is enough space to accelerate and brake, adjust time
         # S = a * t^2 / 2
         if TIP_MAX_ACCELERATION_MM_PER_S2 * self.acceleration_time_s ** 2 > distance_total_mm:
-            self.acceleration_time_s = math.sqrt(distance_total_mm / TIP_MAX_ACCELERATION_MM_PER_S2)
+            self.acceleration_time_s = self._round_to_previous_dt(
+                math.sqrt(distance_total_mm / TIP_MAX_ACCELERATION_MM_PER_S2))
             self.linear_time_s = 0.0
-            # V = a * t -> V = 2 * S / t, take half of total distance for
-            # acceleration and braking
             self.max_velocity_mm_per_sec = (distance_mm / self.acceleration_time_s)
         else:
-            # calculate linear time
             acceleration_distance_mm = 1/2 * self.acceleration_time_s ** 2 * TIP_MAX_ACCELERATION_MM_PER_S2
             linear_distance_mm = distance_total_mm - 2*acceleration_distance_mm
-            self.linear_time_s = (linear_distance_mm / self.max_velocity_mm_per_sec.length())
+            self.linear_time_s = self._round_to_previous_dt(linear_distance_mm / self.max_velocity_mm_per_sec.length())
+
+        self.acceleration_steps = self.acceleration_time_s / REAL_TIME_DT
+        self.linear_steps = self.linear_time_s / REAL_TIME_DT
 
         self._total_time_steps = round(self.total_time_s() * REAL_TIME_DT)
+
+    @staticmethod
+    def _round_to_previous_dt(time_in):
+        return floor(time_in / REAL_TIME_DT) * REAL_TIME_DT
 
     def _adjust_velocity(self, velocity_mm_sec):
         """ Automatically decrease velocity to all axises proportionally if
@@ -123,31 +128,33 @@ class PathGenerator:
         """ Helper function for linear movement.
         """
         t = i * REAL_TIME_DT
-        acceleration_steps = floor(self._acceleration_time_s / REAL_TIME_DT)
-        linear_steps = self.linear_time_s / REAL_TIME_DT
-
-        if acceleration_steps == 0:
-            speed_increment = 0
+        if self.acceleration_steps == 0:
+            acceleration = 0
         else:
-            speed_increment = velocity_mm_per_sec / acceleration_steps
+            acceleration = velocity_mm_per_sec / self.acceleration_time_s
 
-        acceleration = speed_increment / REAL_TIME_DT
+        total_acceleration_distance = 1 / 2 * acceleration * self.acceleration_time_s ** 2
+        total_linear_distance = self.linear_time_s * velocity_mm_per_sec
 
-        if i <= acceleration_steps:
+        total_deceleration_distance = end_position - total_acceleration_distance - total_linear_distance
+
+        if self.acceleration_time_s != 0:
+            deceleration = 2*total_deceleration_distance / self.acceleration_time_s ** 2
+        else:
+            deceleration = 0
+
+        if i <= self.acceleration_steps:
             pos = 1/2 * acceleration * t**2
-        elif i <= acceleration_steps + linear_steps:
-            pos = 1/2 * acceleration * self._acceleration_time_s**2 \
-                  + velocity_mm_per_sec * (t - self._acceleration_time_s)
-        elif i < acceleration_steps + linear_steps + acceleration_steps:
-            t_dec = t - (self._acceleration_time_s + self.linear_time_s)
-            pos = 1/2 * acceleration * self._acceleration_time_s**2 \
-                + velocity_mm_per_sec * self.linear_time_s \
-                + velocity_mm_per_sec * t_dec \
-                + 1/2 * -acceleration * t_dec**2
-        elif i == (acceleration_steps + linear_steps + acceleration_steps):
-            pos = end_position
+        elif i <= self.acceleration_steps + self.linear_steps:
+            pos = total_acceleration_distance\
+                  + velocity_mm_per_sec * (t - self.acceleration_time_s)
+        elif i <= self.acceleration_steps + self.linear_steps + self.acceleration_steps:
+            t_dec = t - (self.acceleration_time_s + self.linear_time_s - REAL_TIME_DT)
+            pos = total_acceleration_distance\
+                  + total_linear_distance\
+                  + velocity_mm_per_sec * t_dec + 1 / 2 * -deceleration * t_dec ** 2
         else:
-            pos = None
+            pos = end_position
 
         return pos
 
@@ -184,6 +191,7 @@ class PathGenerator:
         self._iteration_y = 0
         self._iteration_z = 0
         self._iteration_e = 0
+        self._last_iteration = False
         logging.debug(', '.join("%s: %s" % i for i in vars(self).items()))
         return self
 
@@ -202,25 +210,28 @@ class PathGenerator:
                                                               self._iteration_z, self._iteration_e)
 
         # check condition to stop
-        if dp_x is None and dp_y is None and dp_z is None and dp_z is None:
+        if self._last_iteration:
             raise StopIteration
 
-        if dp_x is not None:
-            if self._delta.x < 0:
-                dp_x = -dp_x
-            self._iteration_x += 1
-        if dp_y is not None:
-            if self._delta.y < 0:
-                dp_y = -dp_y
-            self._iteration_y += 1
-        if dp_z is not None:
-            if self._delta.z < 0:
-                dp_z = -dp_z
-            self._iteration_z += 1
-        if dp_e is not None:
-            if self._delta.e < 0:
-                dp_e = -dp_e
-            self._iteration_e += 1
+        last_position = Coordinates(dp_x, dp_y, dp_z, dp_e)
+        if self._delta == last_position:
+            self._last_iteration = True
+
+        if self._delta.x < 0:
+            dp_x = -dp_x
+        self._iteration_x += 1
+
+        if self._delta.y < 0:
+            dp_y = -dp_y
+        self._iteration_y += 1
+
+        if self._delta.z < 0:
+            dp_z = -dp_z
+        self._iteration_z += 1
+
+        if self._delta.e < 0:
+            dp_e = -dp_e
+        self._iteration_e += 1
 
         return (self._start_pos.x + dp_x,
                 self._start_pos.y + dp_y,
